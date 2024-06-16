@@ -1,0 +1,69 @@
+services:
+
+  ollama:
+    image: ollama/ollama:0.1.38
+    container_name: ollama
+    hostname: ollama
+    ports:
+    - 11434:11434
+    volumes:
+    - ollama:/root/.ollama
+    tty: true
+    restart: always
+    networks:
+    - datascience-env
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    hostname: open-webui
+    environment:
+    - WEBUI_AUTH=false
+    - OLLAMA_API_BASE_URL=http://ollama:11434/api'
+    ports:
+    - 8080:8080
+    volumes:
+    - open-webui:/app/backend/data
+    depends_on:
+    - ollama
+    extra_hosts:
+    - host.docker.internal:host-gateway
+    networks:
+    - datascience-env
+
+  conda:
+    image: mcr.microsoft.com/devcontainers/anaconda:0-3
+    container_name: conda
+    hostname: conda
+    working_dir: /app
+    command: nohup bash -c 'jupyter notebook --ip=0.0.0.0 --port=8888 --NotebookApp.token="" --allow-root'
+    environment:
+    - PYTHONPATH=/app/src
+    volumes:
+    - .:/app:cached
+    ports:
+    - 8888:8888
+    networks:
+    - datascience-env
+
+  app:
+    build:
+      context: .
+      dockerfile: ./.devcontainer/Dockerfile
+    container_name: app
+    hostname: app
+    working_dir: /app
+    user: vscode
+    tty: true
+    volumes:
+    - .:/app:cached
+    networks:
+    - datascience-env
+
+volumes:
+  home:
+  ollama:
+  open-webui:
+
+networks:
+  datascience-env:
